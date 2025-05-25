@@ -65,18 +65,6 @@ public class MediaService {
         contentTypesVideos.put("video/x-flv", "flv");
     }
 
-    private Function<Path, Map<String, String>> transform(String tag, String prefix) {
-        return path -> {
-            Map<String, String> body = new HashMap<>();
-            String file = path.getFileName().toString();
-            String builderUrl = "%s/%s".formatted(prefix, file);
-
-            body.put("media", tag);
-            body.put("url", builderUrl);
-            return body;
-        };
-    }
-
     private Path getFilePath(String file, String dir) {
         switch (dir) {
             case "thumbnails" -> {
@@ -145,24 +133,6 @@ public class MediaService {
             }
         }
         return names;
-    }
-
-    public List<Map<String, String>> getMedia(String prefix) {
-        List<Map<String, String>> list = new ArrayList<>();
-        try {
-            List<Path> thumbnails = Files.list(thumbnailsDir).toList();
-            List<Path> videos = Files.list(videosDir).toList();
-            List<Path> trailers = Files.list(trailersDir).toList();
-
-            list.addAll(videos.stream().map(transform("video", prefix)).toList());
-            list.addAll(thumbnails.stream().map(transform("thumbnail", prefix)).toList());
-            list.addAll(trailers.stream().map(transform("trailer", prefix)).toList());
-
-            return list;
-
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
     }
 
     public UrlResource getThumbnail(String thumbnailFile) {

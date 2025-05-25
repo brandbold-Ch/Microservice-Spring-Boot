@@ -45,14 +45,6 @@ public class MediaController {
                 .body(response);
     }
 
-    @GetMapping("/files")
-    public ResponseEntity<?> getMedia(HttpServletRequest request) {
-        String url = request.getRequestURL().toString();
-        return ResponseEntity
-                .ok(service.getMedia(url));
-    }
-
-
     @GetMapping("/thumbnails/{thumbnailFile}")
     public ResponseEntity<?> getThumbnails(@PathVariable String thumbnailFile) {
         try {
