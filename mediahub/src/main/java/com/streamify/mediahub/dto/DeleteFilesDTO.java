@@ -1,7 +1,7 @@
 package com.streamify.mediahub.dto;
 
-public record DeleteFilesDto(
+public record DeleteFilesDTO(
         String thumbnailFile,
-        String videoFile,
+        String contentFile,
         String trailerFile
 ) {}

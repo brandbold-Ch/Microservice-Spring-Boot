@@ -4,9 +4,7 @@ import java.io.IOException;
 import java.net.MalformedURLException;
 import java.nio.file.*;
 import java.util.*;
-import java.util.function.Function;
-
-import com.streamify.mediahub.dto.StoredFileDto;
+import com.streamify.mediahub.dto.StoredFilePathDTO;
 import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.Part;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,7 +18,7 @@ public class MediaService {
     private final Map<String, String> contentTypesImages;
     private final Map<String, String> contentTypesVideos;
     private Path thumbnailsDir;
-    private Path videosDir;
+    private Path moviesDir;
     private Path trailersDir;
 
     @Value("${media.base-dir}")
@@ -31,7 +29,7 @@ public class MediaService {
         Path basePath = Paths.get(baseDir);
 
         thumbnailsDir = initAndGetDir(basePath, "thumbnails");
-        videosDir = initAndGetDir(basePath, "videos");
+        moviesDir = initAndGetDir(basePath, "movies");
         trailersDir = initAndGetDir(basePath, "trailers");
     }
 
@@ -70,8 +68,8 @@ public class MediaService {
             case "thumbnails" -> {
                 return thumbnailsDir.resolve(file);
             }
-            case "videos" -> {
-                return videosDir.resolve(file);
+            case "movies" -> {
+                return moviesDir.resolve(file);
             }
             case "trailers" -> {
                 return trailersDir.resolve(file);
@@ -90,17 +88,17 @@ public class MediaService {
         return contentTypesImages.containsKey(format);
     }
 
-    private StoredFileDto createNewFile(String customName, String tag, String format) {
+    private StoredFilePathDTO createNewFilePath(String customName, String tag, String format) {
         String extension;
         String outputDir;
 
         switch (tag) {
-            case "trailerFile", "videoFile" -> {
+            case "trailerFile", "contentFile", "chapterFile" -> {
                 if (!inContentTypesVideos(format)) {
                     throw new RuntimeException("Unsupported video format: " + format);
                 }
                 extension = contentTypesVideos.get(format);
-                outputDir = tag.equals("trailerFile") ? "trailers" : "videos";
+                outputDir = tag.equals("trailerFile") ? "trailers" : "movies";
             }
             case "thumbnailFile" -> {
                 if (!inContentTypesImages(format)) {
@@ -114,7 +112,7 @@ public class MediaService {
         String fileName = "%s.%s".formatted(customName, extension);
         Path storagePath = getFilePath(fileName, outputDir);
 
-        return new StoredFileDto(fileName, storagePath);
+        return new StoredFilePathDTO(fileName, storagePath);
     }
 
     public Map<String, String> writeMedia(Collection<Part> parts) {
@@ -123,7 +121,7 @@ public class MediaService {
 
         for (Part part : parts) {
             try {
-                StoredFileDto storedFile = createNewFile(customName, part.getName(),
+                StoredFilePathDTO storedFile = createNewFilePath(customName, part.getName(),
                         part.getContentType());
                 Files.copy(part.getInputStream(), storedFile.storagePath(),
                         StandardCopyOption.REPLACE_EXISTING);
@@ -144,13 +142,13 @@ public class MediaService {
         }
     }
 
-    public void deleteMedia(String thumbnailFile, String videoFile, String trailerFile) {
+    public void deleteMedia(String thumbnailFile, String contentFile, String trailerFile) {
         try {
             if (thumbnailFile != null) {
                 Files.deleteIfExists(thumbnailsDir.resolve(thumbnailFile));
             }
-            if (videoFile != null) {
-                Files.deleteIfExists(videosDir.resolve(videoFile));
+            if (contentFile != null) {
+                Files.deleteIfExists(moviesDir.resolve(contentFile));
             }
             if (trailerFile != null) {
                 Files.deleteIfExists(trailersDir.resolve(trailerFile));
@@ -160,7 +158,23 @@ public class MediaService {
         }
     }
 
-    public FileSystemResource getVideoResource(String fileName) {
-        return new FileSystemResource(videosDir.resolve(fileName));
+    public FileSystemResource getResource(String fileName, String source) {
+        switch (source) {
+            case "movie" -> {
+                return getMovieResource(fileName);
+            }
+            case "trailer" -> {
+                return getTrailerResource(fileName);
+            }
+            default -> throw new RuntimeException("The source does not exist");
+        }
+    }
+
+    public FileSystemResource getMovieResource(String fileName) {
+        return new FileSystemResource(moviesDir.resolve(fileName));
+    }
+
+    public FileSystemResource getTrailerResource(String fileName) {
+        return new FileSystemResource(trailersDir.resolve(fileName));
     }
 }

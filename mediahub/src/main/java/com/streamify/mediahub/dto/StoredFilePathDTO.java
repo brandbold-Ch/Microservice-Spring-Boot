@@ -1,8 +1,7 @@
 package com.streamify.mediahub.dto;
 import java.nio.file.Path;
-import java.util.Map;
 
-public record StoredFileDto(
+public record StoredFilePathDTO(
         String fileName,
         Path storagePath
 ) {}

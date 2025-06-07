@@ -1,7 +1,7 @@
 package com.streamify.mediahub.controllers;
 
-import com.streamify.mediahub.dto.DeleteFilesDto;
-import com.streamify.mediahub.dto.ResponseError;
+import com.streamify.mediahub.dto.DeleteFilesDTO;
+import com.streamify.mediahub.dto.ResponseErrorDTO;
 import com.streamify.mediahub.services.MediaService;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -31,7 +31,7 @@ public class MediaController {
         try {
             response = service.writeMedia(request.getParts());
         } catch (IOException | ServletException | RuntimeException e) {
-            ResponseError responseError = new ResponseError(
+            ResponseErrorDTO responseError = new ResponseErrorDTO(
                     "Error",
                     "An error occurred while uploading content",
                     Map.of("details", e.getMessage()));
@@ -53,7 +53,7 @@ public class MediaController {
                     .contentType(MediaType.IMAGE_JPEG)
                     .body(thumbnailData);
         } catch (RuntimeException e) {
-            ResponseError responseError = new ResponseError(
+            ResponseErrorDTO responseError = new ResponseErrorDTO(
                     "Error",
                     "An error occurred while displaying the thumbnail",
                     Map.of("details", e.getMessage()));
@@ -63,11 +63,12 @@ public class MediaController {
         }
     }
 
-    @GetMapping(value = "/streaming/{fileName}")
+    @GetMapping(value = "/streaming/{fileName}/")
     public ResponseEntity<ResourceRegion> contentStream(
             @PathVariable String fileName,
+            @RequestParam String source,
             @RequestHeader HttpHeaders headers) {
-        FileSystemResource video = service.getVideoResource(fileName);
+        FileSystemResource video = service.getResource(fileName, source);
         HttpRange range = headers.getRange().isEmpty() ? null : headers.getRange().get(0);
 
         try {
@@ -96,18 +97,18 @@ public class MediaController {
 
     @ResponseBody
     @DeleteMapping("/")
-    public ResponseEntity<?> deleteMedia(@RequestBody DeleteFilesDto request) {
+    public ResponseEntity<?> deleteMedia(@RequestBody DeleteFilesDTO request) {
         try {
             service.deleteMedia(
                     request.thumbnailFile(),
-                    request.videoFile(),
+                    request.contentFile(),
                     request.trailerFile()
             );
             return ResponseEntity
                     .ok()
                     .build();
         } catch (RuntimeException e) {
-            ResponseError responseException = new ResponseError(
+            ResponseErrorDTO responseException = new ResponseErrorDTO(
                     "Error",
                     "An error occurred while deleting media",
                     Map.of("details", e.getMessage()));
