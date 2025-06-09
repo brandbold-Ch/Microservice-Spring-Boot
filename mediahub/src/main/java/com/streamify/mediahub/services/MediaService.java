@@ -115,17 +115,21 @@ public class MediaService {
         return new StoredFilePathDTO(fileName, storagePath);
     }
 
-    public Map<String, String> writeMedia(Collection<Part> parts) {
-        Map<String, String> names = new HashMap<>();
+    public Map<String, Object> writeMedia(Collection<Part> parts) {
+        Map<String, Object> names = new HashMap<>();
         String customName = String.valueOf(UUID.randomUUID());
 
         for (Part part : parts) {
             try {
-                StoredFilePathDTO storedFile = createNewFilePath(customName, part.getName(),
-                        part.getContentType());
-                Files.copy(part.getInputStream(), storedFile.storagePath(),
-                        StandardCopyOption.REPLACE_EXISTING);
-                names.put(part.getName(), storedFile.fileName());
+
+                if (part.getContentType() != null) {
+                    StoredFilePathDTO storedFile = createNewFilePath(customName, part.getName(),
+                            part.getContentType());
+                    Files.copy(part.getInputStream(), storedFile.storagePath(),
+                            StandardCopyOption.REPLACE_EXISTING);
+                    names.put(part.getName(), storedFile.fileName());
+                }
+
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -176,5 +180,18 @@ public class MediaService {
 
     public FileSystemResource getTrailerResource(String fileName) {
         return new FileSystemResource(trailersDir.resolve(fileName));
+    }
+
+    public boolean isUUID(String uuid) {
+        try {
+            UUID dirty = UUID.fromString(uuid);
+            return true;
+        } catch (IllegalArgumentException ex) {
+            return false;
+        }
+    }
+
+    public boolean hasUUID (String[] array) {
+        return Arrays.stream(array).allMatch(this::isUUID);
     }
 }

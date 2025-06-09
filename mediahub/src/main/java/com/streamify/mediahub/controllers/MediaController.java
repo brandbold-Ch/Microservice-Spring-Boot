@@ -5,11 +5,13 @@ import com.streamify.mediahub.dto.ResponseErrorDTO;
 import com.streamify.mediahub.services.MediaService;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.core.io.support.ResourceRegion;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestTemplate;
 import java.io.IOException;
 import java.util.Map;
 
@@ -18,18 +20,38 @@ import java.util.Map;
 @RequestMapping("/media")
 public class MediaController {
 
-    private final MediaService service;
+    @Value("${flask.server}")
+    private String flaskUrl;
 
+    private final MediaService service;
+    RestTemplate restTemplate = new RestTemplate();
+    HttpHeaders headers = new HttpHeaders();
     public MediaController(MediaService service) {
         this.service = service;
     }
 
-
     @PostMapping(path = "/upload")
     public ResponseEntity<?> uploadMedia(HttpServletRequest request) {
-        Map<String, String> response;
-        try {
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        Map<String, String[]> metadata = request.getParameterMap();
+        HttpEntity<Map<String, Object>> entity;
+        Map<String, Object> response;
+
+        try{
             response = service.writeMedia(request.getParts());
+
+            for (String key : metadata.keySet()) {
+                String[] value = metadata.get(key);
+
+                if (service.hasUUID(value) || value.length == 0) {
+                    response.put(key, value);
+                } else {
+                    response.put(key, value[0]);
+                }
+            }
+            entity = new HttpEntity<>(response, headers);
+
         } catch (IOException | ServletException | RuntimeException e) {
             ResponseErrorDTO responseError = new ResponseErrorDTO(
                     "Error",
@@ -40,9 +62,7 @@ public class MediaController {
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(responseError);
         }
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(response);
+        return restTemplate.postForEntity(flaskUrl, entity, String.class);
     }
 
     @GetMapping("/thumbnails/{thumbnailFile}")
@@ -76,8 +96,8 @@ public class MediaController {
             ResourceRegion region;
 
             if (range == null) {
-                long chunckSize = Math.min(1_000_000, contentLength);
-                region = new ResourceRegion(video, 0, chunckSize);
+                long chunkSize = Math.min(1_000_000, contentLength);
+                region = new ResourceRegion(video, 0, chunkSize);
             } else {
                 long start = range.getRangeStart(contentLength);
                 long end = range.getRangeEnd(contentLength);
