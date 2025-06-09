@@ -33,9 +33,7 @@ public class MediaController {
     @PostMapping(path = "/upload")
     public ResponseEntity<?> uploadMedia(HttpServletRequest request) {
         headers.setContentType(MediaType.APPLICATION_JSON);
-
         Map<String, String[]> metadata = request.getParameterMap();
-        HttpEntity<Map<String, Object>> entity;
         Map<String, Object> response;
 
         try{
@@ -50,19 +48,19 @@ public class MediaController {
                     response.put(key, value[0]);
                 }
             }
-            entity = new HttpEntity<>(response, headers);
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(response, headers);
+            return restTemplate.postForEntity(flaskUrl, entity, String.class);
 
-        } catch (IOException | ServletException | RuntimeException e) {
+        } catch (Exception ex) {
             ResponseErrorDTO responseError = new ResponseErrorDTO(
                     "Error",
                     "An error occurred while uploading content",
-                    Map.of("details", e.getMessage()));
+                    Map.of("details", ex.getMessage()));
 
             return ResponseEntity
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(responseError);
         }
-        return restTemplate.postForEntity(flaskUrl, entity, String.class);
     }
 
     @GetMapping("/thumbnails/{thumbnailFile}")
